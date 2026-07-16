@@ -40,6 +40,21 @@
   .logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--blue-2),var(--blue-ink));
     display:grid;place-items:center;color:#fff;font-weight:900;box-shadow:0 4px 12px rgba(11,87,208,.35)}
   .brand small{display:block;font-weight:600;font-size:11px;color:var(--muted);letter-spacing:.2px;margin-top:-2px}
+  .logo-img{height:42px;width:auto;max-width:150px;display:none;border-radius:10px;
+    background:#0a1830;padding:3px 8px;object-fit:contain}
+
+  /* Gráfico */
+  .seg{display:inline-flex;background:#eef3fb;border:1px solid var(--line);border-radius:10px;padding:3px}
+  .seg button{border:0;background:transparent;color:var(--muted);font-weight:700;font-size:12.5px;
+    padding:6px 13px;border-radius:8px;cursor:pointer;font-family:inherit}
+  .seg button.on{background:#fff;color:var(--blue);box-shadow:0 1px 3px rgba(16,40,80,.12)}
+  .chart{display:flex;align-items:flex-end;gap:8px;height:180px;margin-top:16px;padding-top:16px}
+  .bcol{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+  .bval{font-size:11px;font-weight:800;color:var(--blue);margin-bottom:5px}
+  .bar{width:66%;max-width:36px;min-height:3px;border-radius:7px 7px 2px 2px;
+    background:linear-gradient(180deg,var(--blue-2),var(--blue-ink));transition:height .5s ease}
+  .blbl{font-size:10px;color:var(--muted);margin-top:7px;white-space:nowrap;text-align:center}
+  .chart-empty{height:180px;display:grid;place-items:center;color:var(--muted);font-size:14px;text-align:center;padding:0 20px}
   .pill{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;
     padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#fff}
   .dot{width:9px;height:9px;border-radius:50%;background:var(--green);position:relative}
@@ -136,7 +151,11 @@
 </head>
 <body>
 <header><div class="wrap bar">
-  <div class="brand"><span class="logo">N</span><span>NEURITO<small>Automatización de resultados</small></span></div>
+  <div class="brand">
+    <img id="brandLogo" class="logo-img" alt="Bono Millonario">
+    <span class="logo" id="brandN">N</span>
+    <span>NEURITO<small>Bono Millonario · resultados</small></span>
+  </div>
   <span class="pill" id="topPill"><span class="dot live" id="topDot"></span><span id="topState">Conectando…</span></span>
 </div></header>
 
@@ -188,6 +207,21 @@
     </div>
   </div>
 
+  <!-- Gráfico -->
+  <div class="grid" style="margin-top:16px">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div class="k">Publicaciones por periodo</div>
+        <div class="seg" id="chartSeg">
+          <button data-r="day" class="on">Día</button>
+          <button data-r="week">Semana</button>
+          <button data-r="month">Mes</button>
+        </div>
+      </div>
+      <div id="chart"><div class="chart-empty">Cargando…</div></div>
+    </div>
+  </div>
+
   <!-- Historial -->
   <div class="sec-title"><h2>Historial de publicaciones</h2><span class="hint">Últimas historias generadas</span></div>
   <div id="histWrap"><div class="empty">Cargando…</div></div>
@@ -212,6 +246,7 @@ const STATES={
   startup:{l:"Iniciando",c:"blue",step:-1,pulse:false},
 };
 let clockBase=null, clockAt=0, nextRunTs=null;
+let lastPubs=[], chartRange='day', refNow=Date.now();
 
 function fmtTime(iso){try{return new Date(iso).toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false,timeZone:"America/Bogota"})}catch(e){return "--:--:--"}}
 function ago(iso){if(!iso)return"";const s=Math.max(0,(Date.now()-new Date(iso).getTime())/1000);
@@ -235,7 +270,7 @@ async function pull(){
 }
 
 function renderStatus(s){
-  clockBase=new Date(s.now).getTime(); clockAt=Date.now();
+  clockBase=new Date(s.now).getTime(); clockAt=Date.now(); refNow=clockBase;
   nextRunTs=s.next_run?new Date(s.next_run).getTime():null;
 
   const st=STATES[s.state]||{l:s.state||"—",c:"blue",step:-1,pulse:false};
@@ -263,6 +298,7 @@ function renderStatus(s){
 }
 
 function renderHistory(pubs){
+  lastPubs=pubs; renderChart();
   const w=document.getElementById("histWrap");
   if(!pubs.length){w.innerHTML='<div class="empty">Todavía no hay publicaciones. La primera aparecerá aquí automáticamente tras el sorteo de las 21:10.</div>';return;}
   w.innerHTML='<div class="hist">'+pubs.map(p=>{
@@ -283,6 +319,61 @@ function renderFeed(evs){
     <div><div class="msg">${escapeHtml(e.message||e.kind)}</div><div class="t mono">${fmtTime(e.time)} · ${ago(e.time)}</div></div></div>`).join("");
 }
 function escapeHtml(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+
+// ---- Gráfico de publicaciones por periodo ----
+function bogotaYMD(t){return new Date(t).toLocaleDateString("en-CA",{timeZone:"America/Bogota"})} // YYYY-MM-DD
+function dayIdx(ymd){return Math.floor(Date.parse(ymd+"T00:00:00Z")/86400000)}
+
+function buildBuckets(range){
+  const today=bogotaYMD(refNow);
+  if(range==="day"){
+    const out=[];
+    for(let i=13;i>=0;i--){const ymd=bogotaYMD(refNow-i*86400000);out.push({key:ymd,label:ymd.slice(8,10),count:0});}
+    return {out,keyOf:p=>bogotaYMD(p.time)};
+  }
+  if(range==="week"){
+    const cur=Math.floor(dayIdx(today)/7),out=[];
+    for(let i=7;i>=0;i--){const wk=cur-i;
+      const lbl=new Date(wk*7*86400000).toLocaleDateString("es-CO",{day:"2-digit",month:"2-digit",timeZone:"UTC"});
+      out.push({key:String(wk),label:lbl,count:0});}
+    return {out,keyOf:p=>String(Math.floor(dayIdx(bogotaYMD(p.time))/7))};
+  }
+  // month
+  const [Y,M]=today.split("-").map(Number),out=[];
+  for(let i=5;i>=0;i--){const d=new Date(Date.UTC(Y,M-1-i,1));
+    out.push({key:d.toISOString().slice(0,7),label:d.toLocaleDateString("es-CO",{month:"short",timeZone:"UTC"}),count:0});}
+  return {out,keyOf:p=>bogotaYMD(p.time).slice(0,7)};
+}
+
+function renderChart(){
+  const el=document.getElementById("chart");if(!el)return;
+  const ok=(lastPubs||[]).filter(p=>p.success);
+  const {out,keyOf}=buildBuckets(chartRange);
+  const idx={};out.forEach(b=>idx[b.key]=b);
+  ok.forEach(p=>{const b=idx[keyOf(p)];if(b)b.count++;});
+  const total=out.reduce((a,b)=>a+b.count,0);
+  if(total===0){
+    el.innerHTML='<div class="chart-empty">Aún no hay publicaciones.<br>El gráfico se llenará solo desde la primera historia publicada.</div>';return;
+  }
+  const max=Math.max(...out.map(b=>b.count),1);
+  el.innerHTML='<div class="chart">'+out.map(b=>{
+    const h=b.count>0?Math.max(6,Math.round(b.count/max*120)):3;
+    return `<div class="bcol"><div class="bval">${b.count||""}</div><div class="bar" style="height:${h}px"></div><div class="blbl">${b.label}</div></div>`;
+  }).join("")+'</div>';
+}
+
+// Toggle Día/Semana/Mes
+document.getElementById("chartSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  chartRange=b.dataset.r;
+  document.querySelectorAll("#chartSeg button").forEach(x=>x.classList.toggle("on",x===b));
+  renderChart();
+});
+
+// Logo de Bono Millonario
+(function(){const img=document.getElementById("brandLogo"),n=document.getElementById("brandN");
+  if(!img)return;img.onload=()=>{img.style.display="block";if(n)n.style.display="none";};
+  img.onerror=()=>{img.style.display="none";};img.src="/logo";})();
 
 // Reloj y cuenta regresiva (tic local sobre la hora del servidor)
 setInterval(()=>{

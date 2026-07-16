@@ -14,6 +14,7 @@ Endpoints:
 """
 from __future__ import annotations
 
+import io
 import threading
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
@@ -21,7 +22,7 @@ from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 
 from .config import BASE_DIR, config
 from .logger import log
@@ -29,6 +30,9 @@ from .monitor import run_monitor_session
 from . import store, token_manager
 
 _DASHBOARD = BASE_DIR / "neurito" / "dashboard.html"
+_USER_LOGO = BASE_DIR / "assets" / "logo.png"
+# Caja de recorte del logo en la plantilla (izq, arriba, der, abajo), como fracción.
+_LOGO_BOX_FRAC = (0.16, 0.012, 0.84, 0.205)
 
 _scheduler: BackgroundScheduler | None = None
 
@@ -132,6 +136,25 @@ def api_history(limit: int = 60):
 @app.get("/api/events")
 def api_events(limit: int = 60):
     return {"eventos": store.get_events(limit)}
+
+
+@app.get("/logo")
+def logo():
+    """Sirve el logo de Bono Millonario. Prioriza assets/logo.png (mejor calidad);
+    si no existe, lo recorta de la plantilla como respaldo."""
+    if _USER_LOGO.exists():
+        return FileResponse(_USER_LOGO, media_type="image/png")
+    try:
+        from PIL import Image
+        img = Image.open(config.template_path).convert("RGBA")
+        w, h = img.size
+        l, t, r, b = _LOGO_BOX_FRAC
+        crop = img.crop((int(l * w), int(t * h), int(r * w), int(b * h)))
+        buf = io.BytesIO()
+        crop.save(buf, "PNG")
+        return Response(content=buf.getvalue(), media_type="image/png")
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=404, detail=f"Sin logo: {exc}")
 
 
 @app.get("/health")
