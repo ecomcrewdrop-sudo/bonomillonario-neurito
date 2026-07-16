@@ -140,7 +140,7 @@ def test_publish(days_ago: int = 2, date: str | None = None):
 
     if not res.found or not res.value:
         raise HTTPException(
-            status_code=404,
+            status_code=409,
             detail=f"No hay resultado '{config.target_row}' para {target_day:%d/%m/%Y}.",
         )
 
