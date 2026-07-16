@@ -220,9 +220,8 @@ def test_publish(days_ago: int = 2, date: str | None = None, key: str | None = N
     - days_ago: cuántos días atrás (por defecto 2).
     - date: opcional, fecha exacta 'DD/MM/YYYY' (tiene prioridad sobre days_ago).
     """
-    # Seguridad: falla cerrado. Clave temporal de verificación (se remueve tras la prueba).
-    _oneshot = "neurito-verify-8h3ktz"
-    if key != _oneshot and (not config.test_publish_key or key != config.test_publish_key):
+    # Seguridad: falla cerrado. Si no hay clave configurada, el endpoint está deshabilitado.
+    if not config.test_publish_key or key != config.test_publish_key:
         raise HTTPException(status_code=403, detail="No autorizado.")
 
     from datetime import datetime, timedelta
