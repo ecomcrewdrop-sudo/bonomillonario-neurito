@@ -98,12 +98,12 @@ def _publish_container(client: httpx.Client, creation_id: str) -> str:
     return data["id"]
 
 
-def publish_story(image_path: Path) -> PublishResult:
+def publish_story(image_path: Path, *, force: bool = False) -> PublishResult:
     """Publica la imagen como Instagram Story. Reintenta hasta IG_MAX_PUBLISH_RETRIES.
 
-    Si DRY_RUN=true, no publica (solo simula) para pruebas.
+    Si DRY_RUN=true, no publica (solo simula) — salvo que `force=True` (prueba manual).
     """
-    if config.dry_run:
+    if config.dry_run and not force:
         log.info("[DRY_RUN] Se omite publicación. Imagen lista: %s", image_path.name)
         return PublishResult(success=True, media_id="DRY_RUN", attempts=0)
 

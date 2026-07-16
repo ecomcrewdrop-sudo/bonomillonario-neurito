@@ -107,6 +107,63 @@ def run_now():
     return JSONResponse({"started": True, "now": config.now().isoformat()})
 
 
+@app.post("/test-publish")
+def test_publish(days_ago: int = 2, date: str | None = None):
+    """Prueba de extremo a extremo: scrapea el resultado de un día pasado, genera la
+    imagen con ese número y esa fecha, y PUBLICA de verdad en Instagram (aunque
+    DRY_RUN=true). Úsalo una vez para validar todo el sistema antes de dejarlo automático.
+
+    - days_ago: cuántos días atrás (por defecto 2).
+    - date: opcional, fecha exacta 'DD/MM/YYYY' (tiene prioridad sobre days_ago).
+    """
+    from datetime import datetime, timedelta
+
+    from .image_generator import ImageGenerationError, generate
+    from .instagram import publish_story
+    from .scraper import check_result
+
+    if date:
+        try:
+            target = datetime.strptime(date, "%d/%m/%Y").replace(tzinfo=config.timezone)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Fecha inválida. Usa DD/MM/YYYY.")
+    else:
+        target = config.now() - timedelta(days=days_ago)
+
+    target_day = target.date()
+
+    # 1) Scrapear el resultado 10:10 A de ese día.
+    try:
+        res = check_result(target_day)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Fallo al scrapear: {exc}")
+
+    if not res.found or not res.value:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No hay resultado '{config.target_row}' para {target_day:%d/%m/%Y}.",
+        )
+
+    # 2) Generar la imagen con ese número y esa fecha.
+    try:
+        image_path = generate(res.value, timestamp=target)
+    except ImageGenerationError as exc:
+        raise HTTPException(status_code=500, detail=f"Fallo al generar imagen: {exc}")
+
+    # 3) Publicar de verdad (force=True ignora DRY_RUN para esta prueba).
+    result = publish_story(image_path, force=True)
+
+    return JSONResponse({
+        "fecha": f"{target_day:%d/%m/%Y}",
+        "numero": res.value,
+        "publicado": result.success,
+        "media_id": result.media_id,
+        "intentos": result.attempts,
+        "error": result.error,
+        "imagen": f"{config.public_base_url}/media/{image_path.name}" if config.public_base_url else None,
+    })
+
+
 @app.get("/preview")
 def preview(
     number: str = "597",
