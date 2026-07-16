@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEURITO — Calibrador de plantilla</title>
+<style>
+  @font-face { font-family: 'MontserratBlack'; src: url('assets/fonts/number.ttf'); font-display: swap; }
+  @font-face { font-family: 'MontserratBold';  src: url('assets/fonts/date.ttf');   font-display: swap; }
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+         background: #0f1420; color: #e7ecf3; }
+  header { padding: 16px 20px; background: #151c2c; border-bottom: 1px solid #263149; }
+  header h1 { margin: 0; font-size: 18px; }
+  header p { margin: 4px 0 0; font-size: 13px; color: #9fb0c9; }
+  .wrap { display: flex; gap: 20px; padding: 20px; flex-wrap: wrap; }
+  .panel { background: #151c2c; border: 1px solid #263149; border-radius: 12px; padding: 16px; }
+  .canvas-panel { flex: 0 0 auto; }
+  .controls { flex: 1 1 320px; min-width: 300px; }
+  canvas { max-height: 78vh; width: auto; border-radius: 10px; display: block; background:#0a0e17; }
+  .row { margin-bottom: 14px; }
+  label { display: block; font-size: 12px; color: #9fb0c9; margin-bottom: 4px; }
+  input[type=range] { width: 100%; }
+  input[type=text], input[type=color] { background:#0a0e17; color:#e7ecf3; border:1px solid #33415e;
+        border-radius:8px; padding:8px; font-size:14px; }
+  input[type=text] { width: 100%; }
+  .val { float: right; font-variant-numeric: tabular-nums; color:#7fd1ff; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .filebox { border: 2px dashed #33415e; border-radius: 10px; padding: 22px; text-align: center;
+        color:#9fb0c9; cursor: pointer; margin-bottom: 16px; }
+  .out { background:#0a0e17; border:1px solid #33415e; border-radius:10px; padding:12px;
+        font-family: ui-monospace, Menlo, Consolas, monospace; font-size:12.5px; white-space:pre;
+        overflow-x:auto; color:#c8f7c8; }
+  button { background:#2b6ef2; color:#fff; border:0; border-radius:8px; padding:9px 14px;
+        font-size:13px; cursor:pointer; margin-top:10px; }
+  button:hover { background:#1f5ad0; }
+  small { color:#7f8ea8; }
+</style>
+</head>
+<body>
+<header>
+  <h1>NEURITO — Calibrador de plantilla</h1>
+  <p>Carga tu plantilla, ajusta los deslizadores hasta que el número y la fecha queden perfectos, y copia los valores para Railway. Todo local, nada se sube.</p>
+</header>
+
+<div class="wrap">
+  <div class="panel canvas-panel">
+    <div class="filebox" id="filebox">📁 Clic para cargar la plantilla (plantilla.png)</div>
+    <input type="file" id="file" accept="image/*" style="display:none">
+    <canvas id="cv" width="360" height="640"></canvas>
+  </div>
+
+  <div class="panel controls">
+    <div class="row">
+      <label>Número de prueba (3 dígitos)</label>
+      <input type="text" id="number" value="597" maxlength="3">
+    </div>
+    <div class="row">
+      <label>Fecha de prueba (texto)</label>
+      <input type="text" id="datetext" value="10/07/2026">
+    </div>
+
+    <div class="row">
+      <label>DIGIT_Y — altura de los dígitos <span class="val" id="v_dy"></span></label>
+      <input type="range" id="digit_y" min="0" max="1" step="0.001" value="0.398">
+    </div>
+    <div class="grid2">
+      <div class="row">
+        <label>DIGIT1_X <span class="val" id="v_d1"></span></label>
+        <input type="range" id="digit1_x" min="0" max="1" step="0.001" value="0.205">
+      </div>
+      <div class="row">
+        <label>DIGIT2_X <span class="val" id="v_d2"></span></label>
+        <input type="range" id="digit2_x" min="0" max="1" step="0.001" value="0.500">
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="row">
+        <label>DIGIT3_X <span class="val" id="v_d3"></span></label>
+        <input type="range" id="digit3_x" min="0" max="1" step="0.001" value="0.795">
+      </div>
+      <div class="row">
+        <label>DIGIT_FONT_FRAC — tamaño <span class="val" id="v_df"></span></label>
+        <input type="range" id="digit_font_frac" min="0.02" max="0.20" step="0.001" value="0.092">
+      </div>
+    </div>
+
+    <div class="row">
+      <label>DATE_Y — altura de la fecha <span class="val" id="v_ty"></span></label>
+      <input type="range" id="date_y" min="0" max="1" step="0.001" value="0.808">
+    </div>
+    <div class="grid2">
+      <div class="row">
+        <label>DATE_X <span class="val" id="v_tx"></span></label>
+        <input type="range" id="date_x" min="0" max="1" step="0.001" value="0.520">
+      </div>
+      <div class="row">
+        <label>DATE_FONT_FRAC — tamaño <span class="val" id="v_tf"></span></label>
+        <input type="range" id="date_font_frac" min="0.015" max="0.12" step="0.001" value="0.044">
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="row">
+        <label>DIGIT_COLOR</label>
+        <input type="color" id="digit_color" value="#111111">
+      </div>
+      <div class="row">
+        <label>DATE_COLOR</label>
+        <input type="color" id="date_color" value="#ffffff">
+      </div>
+    </div>
+
+    <div class="row">
+      <small>Vista previa con la fuente real <b>Montserrat</b> (la misma que usa el backend).</small>
+    </div>
+
+    <label>Valores para Railway (variables de entorno)</label>
+    <div class="out" id="out"></div>
+    <button id="copy">Copiar valores</button>
+    <button id="download" style="background:#1c9e5a">Descargar imagen final</button>
+  </div>
+</div>
+
+<script>
+const ids = ["digit_y","digit1_x","digit2_x","digit3_x","digit_font_frac",
+             "date_x","date_y","date_font_frac","digit_color","date_color"];
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let img = null;
+
+function val(id){ return document.getElementById(id).value; }
+
+function draw(){
+  if(!img){ return; }
+  // Ajusta el canvas a la imagen (limitado en altura por CSS).
+  cv.width = img.naturalWidth;
+  cv.height = img.naturalHeight;
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.drawImage(img, 0, 0, W, H);
+
+  const num = (document.getElementById('number').value || "597").slice(0,3).padStart(3,'0');
+  const xs = [parseFloat(val('digit1_x')), parseFloat(val('digit2_x')), parseFloat(val('digit3_x'))];
+  const dy = parseFloat(val('digit_y'));
+  const dsize = parseFloat(val('digit_font_frac')) * H;
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = val('digit_color');
+  ctx.font = `${dsize}px MontserratBlack, "Arial Black", sans-serif`;
+  for(let i=0;i<3;i++){
+    ctx.fillText(num[i], xs[i]*W, dy*H);
+  }
+
+  // Fecha
+  const dt = document.getElementById('datetext').value || "10/07/2026";
+  const tsize = parseFloat(val('date_font_frac')) * H;
+  ctx.fillStyle = val('date_color');
+  ctx.font = `${tsize}px MontserratBold, Arial, sans-serif`;
+  ctx.fillText(dt, parseFloat(val('date_x'))*W, parseFloat(val('date_y'))*H);
+
+  updateOut();
+}
+
+function updateOut(){
+  const f = id => parseFloat(val(id)).toFixed(3);
+  document.getElementById('v_dy').textContent = f('digit_y');
+  document.getElementById('v_d1').textContent = f('digit1_x');
+  document.getElementById('v_d2').textContent = f('digit2_x');
+  document.getElementById('v_d3').textContent = f('digit3_x');
+  document.getElementById('v_df').textContent = f('digit_font_frac');
+  document.getElementById('v_ty').textContent = f('date_y');
+  document.getElementById('v_tx').textContent = f('date_x');
+  document.getElementById('v_tf').textContent = f('date_font_frac');
+  const out =
+`DIGIT_Y=${f('digit_y')}
+DIGIT1_X=${f('digit1_x')}
+DIGIT2_X=${f('digit2_x')}
+DIGIT3_X=${f('digit3_x')}
+DIGIT_FONT_FRAC=${f('digit_font_frac')}
+DIGIT_COLOR=${val('digit_color')}
+DATE_X=${f('date_x')}
+DATE_Y=${f('date_y')}
+DATE_FONT_FRAC=${f('date_font_frac')}
+DATE_COLOR=${val('date_color')}`;
+  document.getElementById('out').textContent = out;
+}
+
+ids.forEach(id => document.getElementById(id).addEventListener('input', draw));
+['number','datetext'].forEach(id => document.getElementById(id).addEventListener('input', draw));
+// Redibuja cuando las fuentes Montserrat terminen de cargar.
+if (document.fonts && document.fonts.ready) { document.fonts.ready.then(draw); }
+
+document.getElementById('filebox').addEventListener('click', ()=>document.getElementById('file').click());
+document.getElementById('file').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const url = URL.createObjectURL(file);
+  img = new Image();
+  img.onload = () => { document.getElementById('filebox').textContent = '✅ ' + file.name + ' (clic para cambiar)'; draw(); };
+  img.src = url;
+});
+
+document.getElementById('copy').addEventListener('click', ()=>{
+  navigator.clipboard.writeText(document.getElementById('out').textContent);
+  document.getElementById('copy').textContent = '¡Copiado!';
+  setTimeout(()=>document.getElementById('copy').textContent='Copiar valores', 1200);
+});
+
+document.getElementById('download').addEventListener('click', ()=>{
+  if(!img){ alert('Primero carga la plantilla.'); return; }
+  cv.toBlob(b => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b);
+    a.download = 'resultado_final.png';
+    a.click();
+  }, 'image/png');
+});
+
+updateOut();
+</script>
+</body>
+</html>
