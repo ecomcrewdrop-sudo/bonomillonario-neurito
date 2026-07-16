@@ -106,6 +106,14 @@ class Config:
         return path if path.is_absolute() else BASE_DIR / path
 
 
+def _normalize_base_url(value: str) -> str:
+    """Asegura que la URL pública tenga esquema https:// (Instagram lo exige)."""
+    url = value.strip().rstrip("/")
+    if url and not url.startswith(("http://", "https://")):
+        url = "https://" + url
+    return url
+
+
 def load_config() -> Config:
     tz = ZoneInfo(_get("TIMEZONE", "America/Bogota"))
     cfg = Config(
@@ -122,7 +130,7 @@ def load_config() -> Config:
         ig_graph_version=_get("IG_GRAPH_VERSION", "v21.0"),
         ig_graph_host=_get("IG_GRAPH_HOST", "graph.facebook.com"),
         ig_max_retries=_get_int("IG_MAX_PUBLISH_RETRIES", 3),
-        public_base_url=_get("PUBLIC_BASE_URL").rstrip("/"),
+        public_base_url=_normalize_base_url(_get("PUBLIC_BASE_URL")),
         template_path=BASE_DIR / _get("TEMPLATE_PATH", "assets/template/plantilla.png"),
         output_dir=BASE_DIR / _get("OUTPUT_DIR", "output"),
         digit_y=_get_float("DIGIT_Y", 0.398),

@@ -83,6 +83,7 @@ def root():
         "target_row": config.target_row,
         "window": f"{config.monitor_start:%H:%M}-{config.monitor_end:%H:%M}",
         "dry_run": config.dry_run,
+        "public_base_url": config.public_base_url,
     }
 
 
