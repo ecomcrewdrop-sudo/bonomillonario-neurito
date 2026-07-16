@@ -157,6 +157,39 @@ def logo():
         raise HTTPException(status_code=404, detail=f"Sin logo: {exc}")
 
 
+@app.get("/api/check")
+def api_check(date: str | None = None, days_ago: int = 1):
+    """Prueba de SOLO LECTURA del scraper: ejecuta la extracción real para una fecha
+    y devuelve lo que detecta, SIN generar imagen ni publicar. Sirve para verificar
+    que el scraping/detección funciona en producción.
+
+    - date: 'DD/MM/YYYY' (opcional). Si no, usa `days_ago` (por defecto 1 = ayer).
+    """
+    from datetime import datetime, timedelta
+
+    from .scraper import check_result
+
+    if date:
+        try:
+            target = datetime.strptime(date, "%d/%m/%Y").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Fecha inválida. Usa DD/MM/YYYY.")
+    else:
+        target = (config.now() - timedelta(days=days_ago)).date()
+
+    try:
+        res = check_result(target)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Fallo al scrapear: {exc}")
+
+    return {
+        "fecha": target.strftime("%d/%m/%Y"),
+        "fila": res.row_label,
+        "numero": res.value,
+        "detectado": res.found,
+    }
+
+
 @app.get("/health")
 def health():
     return {"ok": True, "now": config.now().isoformat()}
