@@ -16,16 +16,19 @@ from __future__ import annotations
 
 import threading
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 
-from .config import config
+from .config import BASE_DIR, config
 from .logger import log
 from .monitor import run_monitor_session
-from . import token_manager
+from . import store, token_manager
+
+_DASHBOARD = BASE_DIR / "neurito" / "dashboard.html"
 
 _scheduler: BackgroundScheduler | None = None
 
@@ -56,6 +59,8 @@ async def lifespan(app: FastAPI):
         token_manager.refresh, "interval", days=7, id="token-refresh", replace_existing=True
     )
     _scheduler.start()
+    store.set_state("idle", "En espera de la próxima ventana")
+    store.record_event("startup", "NEURITO iniciado y en línea")
     log.info(
         "NEURITO iniciado. Disparo diario a las %02d:%02d (%s). DRY_RUN=%s",
         config.monitor_start.hour, config.monitor_start.minute,
@@ -74,17 +79,59 @@ app = FastAPI(title="NEURITO", version="1.0.0", lifespan=lifespan)
 
 @app.get("/")
 def root():
+    """Panel de control en tiempo real (HTML)."""
+    if _DASHBOARD.exists():
+        return FileResponse(_DASHBOARD, media_type="text/html")
+    return JSONResponse({"service": "NEURITO", "status": "online"})
+
+
+def _next_run(now: datetime) -> datetime:
+    """Próxima ejecución programada (hoy a las 21:10 si aún no pasó; si no, mañana)."""
+    candidate = now.replace(
+        hour=config.monitor_start.hour, minute=config.monitor_start.minute,
+        second=0, microsecond=0,
+    )
+    if now.time() > config.monitor_end:
+        candidate += timedelta(days=1)
+    elif now.time() >= config.monitor_start:
+        candidate = now  # dentro de la ventana: "ahora"
+    return candidate
+
+
+@app.get("/api/status")
+def api_status():
     now = config.now()
+    rt = store.get_runtime()
+    within = config.monitor_start <= now.time() <= config.monitor_end
     return {
         "service": "NEURITO",
         "status": "online",
-        "now_colombia": now.isoformat(),
+        "now": now.isoformat(),
         "timezone": config.timezone.key,
         "target_row": config.target_row,
-        "window": f"{config.monitor_start:%H:%M}-{config.monitor_end:%H:%M}",
+        "window_start": config.monitor_start.strftime("%H:%M"),
+        "window_end": config.monitor_end.strftime("%H:%M"),
+        "within_window": within,
+        "mode": "prueba" if config.dry_run else "automatico",
         "dry_run": config.dry_run,
-        "public_base_url": config.public_base_url,
+        "state": rt.get("state"),
+        "state_since": rt.get("state_since"),
+        "detail": rt.get("detail"),
+        "last_check": rt.get("last_check"),
+        "last_number": rt.get("last_number"),
+        "next_run": _next_run(now).isoformat(),
+        "stats": store.stats(),
     }
+
+
+@app.get("/api/history")
+def api_history(limit: int = 60):
+    return {"publicaciones": store.get_publications(limit)}
+
+
+@app.get("/api/events")
+def api_events(limit: int = 60):
+    return {"eventos": store.get_events(limit)}
 
 
 @app.get("/health")
@@ -157,6 +204,11 @@ def test_publish(days_ago: int = 2, date: str | None = None, key: str | None = N
 
     # 3) Publicar de verdad (force=True ignora DRY_RUN para esta prueba).
     result = publish_story(image_path, force=True)
+    image_url = f"{config.public_base_url}/media/{image_path.name}" if config.public_base_url else None
+    store.record_publication(
+        f"{target_day:%d/%m/%Y}", res.value, success=result.success,
+        media_id=result.media_id, error=result.error, image=image_url,
+    )
 
     return JSONResponse({
         "fecha": f"{target_day:%d/%m/%Y}",
@@ -165,7 +217,7 @@ def test_publish(days_ago: int = 2, date: str | None = None, key: str | None = N
         "media_id": result.media_id,
         "intentos": result.attempts,
         "error": result.error,
-        "imagen": f"{config.public_base_url}/media/{image_path.name}" if config.public_base_url else None,
+        "imagen": image_url,
     })
 
 

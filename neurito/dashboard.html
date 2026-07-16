@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEURITO · Centro de Control</title>
+<style>
+  :root{
+    --blue:#0b57d0; --blue-2:#1b6ef3; --blue-soft:#e8f0fe; --blue-ink:#0a3ea8;
+    --bg:#eef3fb; --card:#ffffff; --ink:#0e1b33; --muted:#5b6b86; --line:#e4ecf7;
+    --green:#12a150; --amber:#e08600; --red:#d92d20; --gray:#8a97ab;
+    --shadow:0 1px 2px rgba(16,40,80,.06), 0 8px 28px rgba(16,40,80,.06);
+    --radius:18px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
+  a{color:inherit}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+
+  /* Top bar */
+  header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.82);
+    backdrop-filter:saturate(160%) blur(10px);border-bottom:1px solid var(--line)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .brand{display:flex;align-items:center;gap:11px;font-weight:800;letter-spacing:-.4px;font-size:19px}
+  .logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--blue-2),var(--blue-ink));
+    display:grid;place-items:center;color:#fff;font-weight:900;box-shadow:0 4px 12px rgba(11,87,208,.35)}
+  .brand small{display:block;font-weight:600;font-size:11px;color:var(--muted);letter-spacing:.2px;margin-top:-2px}
+  .pill{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;
+    padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#fff}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--green);position:relative}
+  .dot.live::after{content:"";position:absolute;inset:-4px;border-radius:50%;
+    background:var(--green);opacity:.35;animation:ping 1.6s cubic-bezier(0,0,.2,1) infinite}
+  .dot.amber{background:var(--amber)} .dot.amber.live::after{background:var(--amber)}
+  .dot.blue{background:var(--blue-2)} .dot.blue.live::after{background:var(--blue-2)}
+  .dot.red{background:var(--red)} .dot.gray{background:var(--gray)}
+  @keyframes ping{0%{transform:scale(1);opacity:.5}80%,100%{transform:scale(2.2);opacity:0}}
+
+  /* Hero */
+  .hero{padding:38px 0 10px}
+  .hero h1{font-size:30px;font-weight:850;letter-spacing:-.8px}
+  .hero p{color:var(--muted);max-width:640px;margin-top:8px;font-size:15.5px}
+
+  /* Grid cards */
+  .grid{display:grid;gap:16px;margin-top:22px}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .g2{grid-template-columns:1.35fr .9fr}
+  @media(max-width:860px){.g4{grid-template-columns:repeat(2,1fr)}.g2{grid-template-columns:1fr}}
+  @media(max-width:520px){.g4{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px;box-shadow:var(--shadow)}
+  .card .k{font-size:12.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+  .card .v{font-size:26px;font-weight:820;letter-spacing:-.5px;margin-top:8px}
+  .card .v.sm{font-size:20px}
+  .card .sub{color:var(--muted);font-size:13px;margin-top:4px}
+  .state-line{display:flex;align-items:center;gap:10px;margin-top:8px}
+
+  .badge{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;
+    padding:5px 11px;border-radius:999px}
+  .badge.auto{background:#e7f7ee;color:#0d7a3d}
+  .badge.test{background:#fff3e0;color:#b56a00}
+
+  /* Pipeline */
+  .pipe{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:6px}
+  .step{position:relative;border:1px solid var(--line);border-radius:14px;padding:14px 12px;background:#fbfdff}
+  .step .n{width:26px;height:26px;border-radius:8px;background:var(--blue-soft);color:var(--blue);
+    display:grid;place-items:center;font-weight:800;font-size:13px}
+  .step h4{font-size:14px;margin-top:9px;font-weight:750}
+  .step p{font-size:12px;color:var(--muted);margin-top:2px}
+  .step.on{border-color:var(--blue-2);background:#fff;box-shadow:0 6px 18px rgba(11,87,208,.12)}
+  .step.on .n{background:var(--blue);color:#fff}
+  .step.done .n{background:var(--green);color:#fff}
+  .step.on::after{content:"";position:absolute;top:0;left:0;height:3px;width:100%;
+    border-radius:14px 14px 0 0;background:linear-gradient(90deg,var(--blue-2),var(--blue-ink))}
+  @media(max-width:640px){.pipe{grid-template-columns:repeat(2,1fr)}}
+
+  .sec-title{display:flex;align-items:center;justify-content:space-between;margin:30px 0 14px}
+  .sec-title h2{font-size:18px;font-weight:800;letter-spacing:-.3px}
+  .sec-title .hint{font-size:12.5px;color:var(--muted)}
+
+  /* History */
+  .hist{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+  .post{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;box-shadow:var(--shadow)}
+  .post .thumb{aspect-ratio:9/16;background:#0b1a34 center/cover no-repeat;position:relative;display:block}
+  .post .no{position:absolute;inset:0;display:grid;place-items:center;color:#93a4c2;font-size:12px}
+  .post .meta{padding:10px 11px}
+  .post .num{font-weight:850;font-size:20px;letter-spacing:1px}
+  .post .row{display:flex;align-items:center;justify-content:space-between;margin-top:3px}
+  .post .row small{color:var(--muted);font-size:11.5px}
+  .ok{color:var(--green);font-weight:700;font-size:11.5px}
+  .fail{color:var(--red);font-weight:700;font-size:11.5px}
+  .empty{border:1px dashed var(--line);border-radius:14px;padding:34px;text-align:center;color:var(--muted);background:#fff}
+
+  /* Feed */
+  .feed{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);
+    max-height:420px;overflow:auto}
+  .ev{display:flex;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .ev:last-child{border-bottom:0}
+  .ev .tdot{width:8px;height:8px;border-radius:50%;margin-top:7px;flex:0 0 auto;background:var(--blue-2)}
+  .ev.k-error .tdot{background:var(--red)} .ev.k-published .tdot{background:var(--green)}
+  .ev.k-detected .tdot,.ev.k-publishing .tdot{background:var(--amber)}
+  .ev .msg{font-size:14px}.ev .t{font-size:12px;color:var(--muted);margin-top:1px}
+
+  footer{color:var(--muted);font-size:12.5px;text-align:center;padding:34px 0 40px}
+  .mono{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<header><div class="wrap bar">
+  <div class="brand"><span class="logo">N</span><span>NEURITO<small>Automatización de resultados</small></span></div>
+  <span class="pill" id="topPill"><span class="dot live" id="topDot"></span><span id="topState">Conectando…</span></span>
+</div></header>
+
+<main class="wrap">
+  <section class="hero">
+    <h1>Centro de control en tiempo real</h1>
+    <p>NEURITO vigila el resultado <b>10:10 A</b> de Triple Táchira, genera la imagen del anuncio y la publica automáticamente como historia de Instagram — cada noche, sin intervención.</p>
+  </section>
+
+  <!-- Estado principal -->
+  <div class="grid g4">
+    <div class="card">
+      <div class="k">Estado actual</div>
+      <div class="state-line"><span class="dot live" id="stDot"></span><span class="v sm" id="stLabel">—</span></div>
+      <div class="sub" id="stDetail">—</div>
+    </div>
+    <div class="card">
+      <div class="k">Hora Colombia</div>
+      <div class="v mono" id="clock">--:--:--</div>
+      <div class="sub" id="today">—</div>
+    </div>
+    <div class="card">
+      <div class="k" id="nextK">Próxima ejecución</div>
+      <div class="v mono" id="countdown">—</div>
+      <div class="sub" id="windowInfo">Ventana 21:10–21:30</div>
+    </div>
+    <div class="card">
+      <div class="k">Modo</div>
+      <div style="margin-top:10px"><span class="badge auto" id="modeBadge">—</span></div>
+      <div class="sub" id="modeSub">—</div>
+    </div>
+  </div>
+
+  <!-- Pipeline + stats -->
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card">
+      <div class="k" style="margin-bottom:12px">Proceso en vivo</div>
+      <div class="pipe" id="pipe">
+        <div class="step" data-s="0"><div class="n">1</div><h4>Monitorea</h4><p>Consulta el sitio cada 10s</p></div>
+        <div class="step" data-s="1"><div class="n">2</div><h4>Detecta</h4><p>Captura el 10:10 A</p></div>
+        <div class="step" data-s="2"><div class="n">3</div><h4>Genera</h4><p>Crea la imagen</p></div>
+        <div class="step" data-s="3"><div class="n">4</div><h4>Publica</h4><p>Historia de Instagram</p></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="k">Publicaciones exitosas</div>
+      <div class="v" id="totalPubs">0</div>
+      <div class="sub" id="lastPub">Aún sin publicaciones registradas</div>
+    </div>
+  </div>
+
+  <!-- Historial -->
+  <div class="sec-title"><h2>Historial de publicaciones</h2><span class="hint">Últimas historias generadas</span></div>
+  <div id="histWrap"><div class="empty">Cargando…</div></div>
+
+  <!-- Feed -->
+  <div class="sec-title"><h2>Actividad en tiempo real</h2><span class="hint" id="feedHint">En vivo</span></div>
+  <div class="feed" id="feed"></div>
+
+  <footer>NEURITO · zona horaria America/Bogota (UTC−5) · actualiza cada 4 segundos</footer>
+</main>
+
+<script>
+const STATES={
+  idle:{l:"En espera",c:"blue",step:-1,pulse:false},
+  monitoring:{l:"Monitoreando",c:"amber",step:0,pulse:true},
+  checking:{l:"Consultando el sitio",c:"amber",step:0,pulse:true},
+  detected:{l:"Resultado detectado",c:"blue",step:1,pulse:true},
+  publishing:{l:"Publicando historia",c:"amber",step:2,pulse:true},
+  published:{l:"Publicado ✓",c:"green",step:3,pulse:false},
+  closed:{l:"Ventana cerrada",c:"gray",step:-1,pulse:false},
+  error:{l:"Incidencia",c:"red",step:-1,pulse:true},
+  startup:{l:"Iniciando",c:"blue",step:-1,pulse:false},
+};
+let clockBase=null, clockAt=0, nextRunTs=null;
+
+function fmtTime(iso){try{return new Date(iso).toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false,timeZone:"America/Bogota"})}catch(e){return "--:--:--"}}
+function ago(iso){if(!iso)return"";const s=Math.max(0,(Date.now()-new Date(iso).getTime())/1000);
+  if(s<60)return`hace ${Math.floor(s)}s`;if(s<3600)return`hace ${Math.floor(s/60)} min`;return`hace ${Math.floor(s/3600)} h`}
+
+function setDot(el,color,pulse){el.className="dot "+(pulse?"live ":"")+color}
+
+async function pull(){
+  try{
+    const [s,h,e]=await Promise.all([
+      fetch("/api/status").then(r=>r.json()),
+      fetch("/api/history?limit=24").then(r=>r.json()),
+      fetch("/api/events?limit=40").then(r=>r.json()),
+    ]);
+    renderStatus(s); renderHistory(h.publicaciones||[]); renderFeed(e.eventos||[]);
+    document.getElementById("topState").textContent="En línea";
+  }catch(err){
+    document.getElementById("topState").textContent="Sin conexión";
+    setDot(document.getElementById("topDot"),"red",false);
+  }
+}
+
+function renderStatus(s){
+  clockBase=new Date(s.now).getTime(); clockAt=Date.now();
+  nextRunTs=s.next_run?new Date(s.next_run).getTime():null;
+
+  const st=STATES[s.state]||{l:s.state||"—",c:"blue",step:-1,pulse:false};
+  document.getElementById("stLabel").textContent=st.l;
+  document.getElementById("stDetail").textContent=s.detail||(s.last_check?("Última consulta "+ago(s.last_check)):"—");
+  setDot(document.getElementById("stDot"),st.c,st.pulse);
+  setDot(document.getElementById("topDot"),st.c,st.pulse||s.within_window);
+
+  // pipeline
+  document.querySelectorAll(".step").forEach(el=>{
+    const i=+el.dataset.s; el.classList.remove("on","done");
+    if(st.step>=0){ if(i<st.step)el.classList.add("done"); else if(i===st.step)el.classList.add("on"); }
+  });
+
+  document.getElementById("windowInfo").textContent="Ventana "+s.window_start+"–"+s.window_end;
+  const mb=document.getElementById("modeBadge");
+  if(s.dry_run){mb.className="badge test";mb.textContent="Prueba (no publica)";document.getElementById("modeSub").textContent="Genera pero no publica";}
+  else{mb.className="badge auto";mb.textContent="Automático";document.getElementById("modeSub").textContent="Publica en Instagram";}
+  document.getElementById("nextK").textContent=s.within_window?"Estado de la ventana":"Próxima ejecución";
+
+  // stats
+  document.getElementById("totalPubs").textContent=(s.stats&&s.stats.total)||0;
+  const last=s.stats&&s.stats.ultima;
+  document.getElementById("lastPub").textContent=last?("Última: "+last.numero+" · "+last.fecha):"Aún sin publicaciones registradas";
+}
+
+function renderHistory(pubs){
+  const w=document.getElementById("histWrap");
+  if(!pubs.length){w.innerHTML='<div class="empty">Todavía no hay publicaciones. La primera aparecerá aquí automáticamente tras el sorteo de las 21:10.</div>';return;}
+  w.innerHTML='<div class="hist">'+pubs.map(p=>{
+    const thumb=p.image?`style="background-image:url('${p.image}')"`:"";
+    const no=p.image?"":'<div class="no">imagen no disponible</div>';
+    const st=p.success?'<span class="ok">✓ publicado</span>':'<span class="fail">✗ falló</span>';
+    return `<div class="post"><div class="thumb" ${thumb}>${no}</div>
+      <div class="meta"><div class="num">${p.numero||"—"}</div>
+      <div class="row"><small>${p.fecha||""}</small>${st}</div>
+      <div class="row"><small>${fmtTime(p.time)}</small></div></div></div>`;
+  }).join("")+'</div>';
+}
+
+function renderFeed(evs){
+  const f=document.getElementById("feed");
+  if(!evs.length){f.innerHTML='<div class="ev"><span class="tdot"></span><div><div class="msg">Sin actividad todavía</div></div></div>';return;}
+  f.innerHTML=evs.map(e=>`<div class="ev k-${e.kind}"><span class="tdot"></span>
+    <div><div class="msg">${escapeHtml(e.message||e.kind)}</div><div class="t mono">${fmtTime(e.time)} · ${ago(e.time)}</div></div></div>`).join("");
+}
+function escapeHtml(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+
+// Reloj y cuenta regresiva (tic local sobre la hora del servidor)
+setInterval(()=>{
+  if(clockBase==null)return;
+  const now=clockBase+(Date.now()-clockAt);
+  document.getElementById("clock").textContent=fmtTime(new Date(now).toISOString());
+  document.getElementById("today").textContent=new Date(now).toLocaleDateString("es-CO",{weekday:"long",day:"numeric",month:"long",timeZone:"America/Bogota"});
+  const cd=document.getElementById("countdown");
+  if(nextRunTs){
+    let d=Math.floor((nextRunTs-now)/1000);
+    if(d<=0){cd.textContent="En curso";}
+    else{const h=Math.floor(d/3600),m=Math.floor(d%3600/60),sec=d%60;
+      cd.textContent=(h>0?h+"h ":"")+String(m).padStart(2,"0")+"m "+String(sec).padStart(2,"0")+"s";}
+  }
+},1000);
+
+pull(); setInterval(pull,4000);
+</script>
+</body>
+</html>
