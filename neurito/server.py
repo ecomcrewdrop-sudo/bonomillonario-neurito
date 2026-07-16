@@ -109,7 +109,7 @@ def run_now():
 
 
 @app.post("/test-publish")
-def test_publish(days_ago: int = 2, date: str | None = None):
+def test_publish(days_ago: int = 2, date: str | None = None, key: str | None = None):
     """Prueba de extremo a extremo: scrapea el resultado de un día pasado, genera la
     imagen con ese número y esa fecha, y PUBLICA de verdad en Instagram (aunque
     DRY_RUN=true). Úsalo una vez para validar todo el sistema antes de dejarlo automático.
@@ -117,6 +117,10 @@ def test_publish(days_ago: int = 2, date: str | None = None):
     - days_ago: cuántos días atrás (por defecto 2).
     - date: opcional, fecha exacta 'DD/MM/YYYY' (tiene prioridad sobre days_ago).
     """
+    # Seguridad: falla cerrado. Si no hay clave configurada, el endpoint está deshabilitado.
+    if not config.test_publish_key or key != config.test_publish_key:
+        raise HTTPException(status_code=403, detail="No autorizado.")
+
     from datetime import datetime, timedelta
 
     from .image_generator import ImageGenerationError, generate

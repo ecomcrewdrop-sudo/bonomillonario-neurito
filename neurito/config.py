@@ -96,6 +96,7 @@ class Config:
 
     # Modo prueba
     dry_run: bool
+    test_publish_key: str  # clave para habilitar /test-publish (vacío = deshabilitado)
 
     def now(self) -> datetime:
         """Hora actual en la zona horaria de Colombia (referencia absoluta)."""
@@ -149,6 +150,7 @@ def load_config() -> Config:
         telegram_bot_token=_get("TELEGRAM_BOT_TOKEN"),
         telegram_chat_id=_get("TELEGRAM_CHAT_ID"),
         dry_run=_get_bool("DRY_RUN", False),
+        test_publish_key=_get("TEST_PUBLISH_KEY"),
     )
     return cfg
 
