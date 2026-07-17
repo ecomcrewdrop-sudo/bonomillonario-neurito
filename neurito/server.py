@@ -190,6 +190,37 @@ def api_check(date: str | None = None, days_ago: int = 1):
     }
 
 
+@app.get("/api/ig-health")
+def api_ig_health():
+    """Chequeo en vivo de la conexión con Instagram/Facebook: valida el token actual
+    llamando a la API oficial. Read-only, no publica nada."""
+    import httpx
+
+    tok = token_manager.get_token()
+    if not config.ig_user_id or not tok:
+        return {"ok": False, "detalle": "Faltan IG_USER_ID o token."}
+    try:
+        r = httpx.get(
+            f"https://{config.ig_graph_host}/me",
+            params={"fields": "user_id,username", "access_token": tok},
+            timeout=15.0,
+        )
+        data = r.json()
+    except httpx.HTTPError as exc:
+        return {"ok": False, "detalle": f"Error de red: {exc}"}
+
+    if r.status_code == 200 and data.get("username"):
+        return {
+            "ok": True,
+            "conexion": "activa",
+            "cuenta": data.get("username"),
+            "user_id": data.get("user_id"),
+            "host": config.ig_graph_host,
+            "token_ok": True,
+        }
+    return {"ok": False, "token_ok": False, "detalle": data}
+
+
 @app.get("/health")
 def health():
     return {"ok": True, "now": config.now().isoformat()}
