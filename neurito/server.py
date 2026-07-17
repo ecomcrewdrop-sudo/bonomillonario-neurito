@@ -47,9 +47,10 @@ def _launch_session() -> None:
 async def lifespan(app: FastAPI):
     global _scheduler
 
-    # Token de Instagram: cargar el persistido y refrescarlo al arrancar.
+    # Token de Instagram: cargar el persistido. NO se refresca en cada arranque
+    # (eso puede disparar bloqueos por exceso de llamadas si el servicio se reinicia
+    # seguido). El refresco lo hace solo el job semanal de abajo.
     token_manager.load()
-    token_manager.refresh()
 
     _scheduler = BackgroundScheduler(timezone=config.timezone)
     trigger = CronTrigger(
