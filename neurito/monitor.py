@@ -55,11 +55,13 @@ def _process_result(number: str, day: date) -> None:
     store.set_state("publishing", f"Publicando resultado {number}")
 
     # 1) Generar imagen — si falla, alertar y NO publicar.
+    log.info("Armo la imagen del anuncio con el número %s...", number)
     try:
         image_path = generate(number)
     except ImageGenerationError as exc:
         store.set_state("error", f"Fallo al generar imagen ({number})")
         store.record_publication(fecha, number, success=False, error=str(exc))
+        log.error("No pude crear la imagen. No publico nada para no sacar algo incompleto.")
         notify_admin(
             f"FALLO al generar imagen para 10:10 A = {number} ({day}). "
             f"No se publica nada. Detalle: {exc}"
@@ -69,12 +71,15 @@ def _process_result(number: str, day: date) -> None:
     image_url = f"{config.public_base_url}/media/{image_path.name}" if config.public_base_url else None
 
     # 2) Publicar Story — reintentos internos (3). Si falla, guardar + registrar.
+    log.info("Imagen lista. Ahora subo la historia a Instagram...")
     result = publish_story(image_path)
     if result.success:
         _mark_published(day)
         store.set_state("published", f"Historia publicada: {number}")
         store.record_publication(fecha, number, success=True,
                                  media_id=result.media_id, image=image_url)
+        log.info("¡Listo! Publiqué la historia del 10:10 A = %s (salió al intento %d). Termino por hoy.",
+                 number, result.attempts)
         notify_success(
             f"Story publicada. 10:10 A = {number} ({day}). "
             f"media_id={result.media_id}, intentos={result.attempts}."
@@ -85,6 +90,8 @@ def _process_result(number: str, day: date) -> None:
         store.set_state("error", f"Publicación fallida ({number})")
         store.record_publication(fecha, number, success=False,
                                  error=result.error, image=image_url)
+        log.error("No logré publicar en Instagram tras %d intentos. Guardé la imagen para subirla a mano.",
+                  result.attempts)
         notify_admin(
             f"PUBLICACIÓN FALLIDA tras {result.attempts} intentos para 10:10 A = {number} "
             f"({day}). Imagen guardada para revisión manual: {image_path}. "
@@ -140,8 +147,8 @@ def run_monitor_session(now_provider=None) -> None:
             except httpx.HTTPError as exc:
                 # Sitio caído: registrar y reintentar en RETRY_INTERVAL_SECONDS.
                 store.set_state("error", "Sitio no disponible, reintentando…")
-                log.error("Sitio no disponible: %s. Reintento en %ds.",
-                          exc, config.retry_interval)
+                log.warning("El sitio no respondió. Lo intento de nuevo en %d segundos.",
+                            config.retry_interval)
                 _sleep_bounded(config.retry_interval, now_provider)
                 store.set_state("monitoring", "Reintentando tras caída del sitio")
                 continue
@@ -153,7 +160,9 @@ def run_monitor_session(now_provider=None) -> None:
                 _process_result(res.value, day)
                 return
 
-            # Aún no sale: esperar el intervalo normal.
+            # Aún no sale: avisar y esperar el intervalo normal.
+            log.info("Revisé el sitio: todavía no sale el resultado. Vuelvo a revisar en %d segundos.",
+                     config.poll_interval)
             _sleep_bounded(config.poll_interval, now_provider)
     finally:
         scraper.close()
