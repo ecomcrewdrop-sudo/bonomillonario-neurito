@@ -105,9 +105,9 @@ def run_monitor_session(now_provider=None) -> None:
         return
 
     log.info(
-        "Iniciando sesión de monitoreo %s | ventana %s–%s | fila '%s' | poll %ds",
-        day, config.monitor_start.strftime("%H:%M"),
-        config.monitor_end.strftime("%H:%M"), config.target_row, config.poll_interval,
+        "Empieza la vigilancia de hoy (%s). Reviso el sitio cada %d segundos hasta que "
+        "salga el resultado 10:10 A.",
+        day.strftime("%d/%m/%Y"), config.poll_interval,
     )
 
     store.set_state("monitoring", f"Monitoreando ventana {config.monitor_start:%H:%M}–{config.monitor_end:%H:%M}")
@@ -147,8 +147,8 @@ def run_monitor_session(now_provider=None) -> None:
                 continue
 
             if res.found and res.value:
-                log.info("¡Resultado detectado! 10:10 A = %s (%s). Procediendo de inmediato.",
-                         res.value, day)
+                log.info("¡Salió el resultado! 10:10 A = %s. Generando y publicando la historia ahora.",
+                         res.value)
                 store.set_state("detected", f"Resultado detectado: {res.value}")
                 _process_result(res.value, day)
                 return

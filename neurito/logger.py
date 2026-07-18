@@ -10,13 +10,17 @@ from .config import config
 
 
 class BogotaFormatter(logging.Formatter):
-    """Formatea los timestamps en la zona horaria de Colombia."""
+    """Formato legible y humano: fecha/hora de Colombia + ícono según importancia."""
 
-    def formatTime(self, record, datefmt=None):  # noqa: N802
+    ICONS = {"DEBUG": "·", "INFO": "•", "WARNING": "⚠️", "ERROR": "⛔", "CRITICAL": "🚨"}
+
+    def format(self, record):  # noqa: A003
         dt = datetime.fromtimestamp(record.created, config.timezone)
-        if datefmt:
-            return dt.strftime(datefmt)
-        return dt.isoformat(timespec="seconds")
+        icon = self.ICONS.get(record.levelname, "•")
+        line = f"{dt.strftime('%d/%m  %H:%M:%S')}   {icon}  {record.getMessage()}"
+        if record.exc_info:
+            line += "\n" + self.formatException(record.exc_info)
+        return line
 
 
 def get_logger(name: str = "neurito") -> logging.Logger:
@@ -26,12 +30,7 @@ def get_logger(name: str = "neurito") -> logging.Logger:
 
     logger.setLevel(logging.INFO)
     handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(
-        BogotaFormatter(
-            fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S %Z",
-        )
-    )
+    handler.setFormatter(BogotaFormatter())
     logger.addHandler(handler)
     logger.propagate = False
     return logger

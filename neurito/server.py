@@ -66,10 +66,11 @@ async def lifespan(app: FastAPI):
     _scheduler.start()
     store.set_state("idle", "En espera de la próxima ventana")
     store.record_event("startup", "NEURITO iniciado y en línea")
+    modo = "Prueba (no publica)" if config.dry_run else "Automático"
     log.info(
-        "NEURITO iniciado. Disparo diario a las %02d:%02d (%s). DRY_RUN=%s",
-        config.monitor_start.hour, config.monitor_start.minute,
-        config.timezone.key, config.dry_run,
+        "NEURITO en línea. Cada noche a las %02d:%02d (hora Colombia) vigila el resultado "
+        "10:10 A y publica la historia solo. Modo actual: %s.",
+        config.monitor_start.hour, config.monitor_start.minute, modo,
     )
     try:
         yield
